@@ -56,8 +56,12 @@ bot.on("error", (err) => {
   
 });
 
+let startedLoading;
 bot.on("ready", async () => {
   
+  if (startedLoading) return;
+  startedLoading = true;
+
   const Database = await require("./database");
   const dbClient = Database.mongoClient;
 
@@ -68,8 +72,16 @@ bot.on("ready", async () => {
   const files = fs.readdirSync(path.join(__dirname, "commands"));
   for (let x = 0; files.length > x; x++) {
 
-    const file = require("./commands/" + files[x]);
-    if (typeof(file) === "function") await file(bot);
+    try {
+
+      const file = require("./commands/" + files[x]);
+      if (typeof(file) === "function") await file(bot);
+
+    } catch (err) {
+
+      console.log("\x1b[33m%s\x1b[0m", "[Commands] Couldn't add " + files[x] + ": " + err);
+
+    }
 
   }
   
