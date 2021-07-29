@@ -1,0 +1,36 @@
+const Command = require("../commands");
+
+// eslint-disable-next-line no-unused-vars
+module.exports = (_, collections) => {
+  
+  new Command.new("purge", ["prune"], "dev", "Purge a bunch of messages so you don't have to click like a gazillion different times", undefined, async (bot, args, msg, interaction, initInteractionResponse) => {
+
+    // Make sure the member has permission to do this
+    const guild = interaction ? bot.guilds.find(possibleGuild => possibleGuild.id === interaction.guild_id) : msg.channel.guild;
+    const member = (interaction ? guild.members.find(possibleMember => possibleMember.id === interaction.member.user.id) : msg.member);
+    if (!member.permission.has("manageMessages")) {
+
+      return interaction ? {content: "DENIED."} : await msg.channel.createMessage("DENIED.");
+
+    }
+
+    // Delete the messages
+    const amount = interaction ? interaction.data.options.find(option => option.name === "amount").value : args;
+    const channel = interaction ? bot.getChannel(interaction.channel_id) : msg.channel;
+    console.log(await channel.purge({
+      limit: amount + 1,
+      filter: filteredMessage => initInteractionResponse.id !== filteredMessage.id,
+      reason: "FOLLOWING " + member.username + "'S ORDERS."
+    }));
+
+    // Success!
+    return interaction ? {content: "IT IS DONE."} : await msg.channel.createMessage("IT IS DONE.");
+
+  }, undefined, [{
+    name: "amount",
+    description: "The amount of messages you want to remove",
+    type: 4,
+    required: true
+  }]);
+
+};
