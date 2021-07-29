@@ -9,7 +9,7 @@ const fetch = require("node-fetch");
 let configuredCommands = [];
 class Command {
 
-  async execute(args, msg, interaction) {
+  async execute(args, msg, interaction, initInteractionResponse) {
 
     // Check if the user is under cooldown
     const AuthorId = interaction ? interaction.member.id : msg.author.id;
@@ -28,7 +28,7 @@ class Command {
     // Execute the command
     try {
 
-      return await this.action(bot, args, msg, interaction);
+      return await this.action(bot, args, msg, interaction, initInteractionResponse);
 
     } catch (err) {
 
@@ -68,11 +68,42 @@ class Command {
   async verifyInteraction() { 
 
     const interactionCmdInfo = configuredCommands.find(c => c.name === this.name);
-    if (this.slashOptions && !interactionCmdInfo) {
+    let matches = true;
+    if (this.slashOptions) {
+
+      for (let i = 0; i < this.slashOptions.length; i++) {
+
+        // Make sure there aren't any new or deleted options
+        const options = Object.keys(this.slashOptions[i]);
+        if (this.slashOptions.length !== interactionCmdInfo.options.length) {
+          
+          matches = false;
+          break;
+
+        }
+
+        // Make sure all of the options are the same
+        for (let x = 0; x < options.length; x++) {
+
+          const oldData = interactionCmdInfo.options.find(possibleOption => possibleOption[options[x]] === this.slashOptions[i][options[x]]);
+          const newData = this.slashOptions[i][options[x]];
+          if (!oldData || oldData[options[x]] !== newData) {
+
+            matches = false;
+            break;
+
+          }
+
+        }
+
+      }
+
+    }
+    if (this.slashOptions && (!interactionCmdInfo || !matches)) {
 
       try {
 
-        console.log("\x1b[36m%s\x1b[0m", "[Commands] " + (this.slashOptions ? "Creating" : "Deleting") + " interaction for command \"" + this.name + "\"...");
+        console.log("\x1b[36m%s\x1b[0m", "[Commands] " + (matches ? "Creating" : "Updating") + " interaction for command \"" + this.name + "\"...");
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -113,7 +144,7 @@ class Command {
 
       }
 
-    } else if (!this.slashOptions && interactionCmdInfo) {
+    } else if (!this.slashOptions && interactionCmdInfo && !matches) {
       
       console.log("\x1b[36m%s\x1b[0m", "[Commands] Removing interaction for command \"" + this.name + "\"...");
       this.deleteInteraction = true;
@@ -243,7 +274,14 @@ async function initialize(client) {
             
             try {
 
-              response = await command.execute(undefined, undefined, packet.d) || {content: "That's done."};
+              const initInteractionResponse = await fetch("https://discord.com/api/v8/webhooks/" + process.env.applicationId + "/" + packet.d.token + "/messages/@original", {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": "Bot " + process.env.token
+                }
+              });
+              response = await command.execute(undefined, undefined, packet.d, await initInteractionResponse.json()) || {content: "That's done."};
 
             } catch (err) {
 
