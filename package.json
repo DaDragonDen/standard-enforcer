@@ -1,0 +1,32 @@
+{
+  "name": "sil-discord",
+  "version": "1.1.0",
+  "description": "A Discord bot created to help Da Dragon Den with role and event management",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makuwro/boe.git"
+  },
+  "author": "Christian Toney",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/makuwro/boe/issues"
+  },
+  "homepage": "https://github.com/makuwro/boe",
+  "dependencies": {
+    "better-sqlite3": "^7.1.2",
+    "dotenv": "^8.2.0",
+    "eris": "^0.14.0",
+    "instagram-private-api": "^1.44.0",
+    "mongodb": "^3.6.9",
+    "node-cache": "^5.1.2",
+    "node-fetch": "^2.6.1",
+    "node-schedule": "^2.0.0",
+    "puppeteer": "^8.0.0",
+    "twitter": "^1.7.1",
+    "ws": "^7.4.4"
+  }
+}
