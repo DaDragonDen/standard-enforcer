@@ -1,27 +1,34 @@
-const Commands = require("../commands");
+const Command = require("../commands");
 
-function userAllowedToEval(bot, userId) {
+// eslint-disable-next-line no-unused-vars
+module.exports = (_, collections) => {
   
-  if (userId === "419881371004174338") return true;
-  
-  return false;
-  
-};
+  new Command.new("eval", ["evaluate"], "dev", "A command for debugging the bot", undefined, async (bot, args, msg, interaction) => {
 
-module.exports = function() {
-  new Commands.new("eval", ["evaluate", "run"], "help", async (bot, args, msg) => {
-    
     // Make sure they're allowed to eval
-    if (!userAllowedToEval(bot, msg.author.id)) {
-      return;
-    };
+    if (interaction ? interaction.member.id : msg.author.id !== "419881371004174338") {
+
+      return {content: "DENIED."};
+
+    }
     
     // Run the command
     try {
-      eval(args);
+
+      eval(interaction ? interaction.data.options.find(option => option.name === "code").value : args);
+      return {content: "SUCCESS."};
+
     } catch (err) {
-      msg.channel.createMessage("Something happened!!1 \n```" + err + "\n```");
-    };
-    
-  });
+
+      return interaction ? {content: err.message} : await msg.channel.createMessage("ERROR: \n```" + err + "\n```");
+
+    }
+
+  }, undefined, [{
+    name: "code",
+    description: "The code you want to run",
+    type: 3,
+    required: true
+  }]);
+
 };
