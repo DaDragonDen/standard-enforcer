@@ -8,7 +8,11 @@ module.exports = async (bot, msg) => {
     dbClient = Database.mongoClient;
     db = dbClient.db("guilds");
     collection = db.collection("GuildInviteWhitelist");
-  };
+
+  }
+
+  // Check if this is the server
+  if (msg.channel.type !== 0) return;
   
   const matches = msg.content.match(/discord.gg\/(\S+)/mi);
   // eslint-disable-next-line arrow-body-style
