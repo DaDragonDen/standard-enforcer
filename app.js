@@ -168,6 +168,8 @@ bot.on("ready", async () => {
         if (command) command.execute(args, msg);
 
       } catch (err) {
+
+        console.log("[Commands] Couldn't execute command: " + err);
         
       }
 
