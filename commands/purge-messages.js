@@ -1,7 +1,6 @@
 const Command = require("../commands");
 
-// eslint-disable-next-line no-unused-vars
-module.exports = (_, collections) => {
+module.exports = () => {
   
   new Command.new("purge", ["prune"], "dev", "Purge a bunch of messages so you don't have to click like a gazillion different times", undefined, async (bot, args, msg, interaction, initInteractionResponse) => {
 
