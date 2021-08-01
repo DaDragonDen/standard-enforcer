@@ -46,7 +46,15 @@ bot.on("guildMemberAdd", async (guild, member) => {
   
   if (raidProtection) {
 
+    try {
+
     await member.addRole("850049997449986128");
+
+    } catch (err) {
+
+      console.log("\x1b[33m%s\x1b[0m", "[Raid Protection] Couldn't suppress " + member.username + "#" + member.discriminator + " (" + member.id + "): " + err);
+
+    }
 
   }
 
