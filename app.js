@@ -48,7 +48,7 @@ bot.on("guildMemberAdd", async (guild, member) => {
 
     try {
 
-    await member.addRole("850049997449986128");
+      await member.addRole("850049997449986128");
 
     } catch (err) {
 
@@ -100,6 +100,29 @@ bot.on("ready", async () => {
     await commands.list[commandList[i]].verifyInteraction();
 
   }
+
+  bot.on("guildMemberUpdate", async (_, member) => {
+
+    await require("./modules/name-enforcement")(member);
+
+  });
+
+  bot.on("userUpdate", async (user) => {
+
+    const guilds = bot.guilds.filter(() => true);
+    for (let i = 0; guilds.length > i; i++) {
+
+      const guild = guilds.find(possibleGuild => possibleGuild.id === guilds[i].id);
+      const member = guild.members.find(possibleMember => possibleMember.id === user.id);
+      if (member) {
+
+        await require("./modules/name-enforcement")(member);
+
+      }
+
+    }
+
+  });
 
   const latestMessages = {};
   bot.on("messageCreate", async (msg) => {
