@@ -154,7 +154,7 @@ bot.on("ready", async () => {
       if (msg.content.indexOf(" ") !== -1) {
 
         commandName = msg.content.substring(1, msg.content.indexOf(" "));
-        args = msg.content.substring(msg.content.indexOf(" ")+1);
+        args = msg.content.substring(msg.content.indexOf(" ") + 1);
 
       } else {
 
