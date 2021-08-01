@@ -62,6 +62,8 @@ bot.on("guildMemberAdd", async (guild, member) => {
 
 bot.on("error", (err) => {
   
+  console.log("\x1b[33m%s\x1b[0m", "[Eris] " + err);
+
 });
 
 let database, dbClient, db, collections;
