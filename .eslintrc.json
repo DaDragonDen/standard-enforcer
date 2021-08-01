@@ -78,6 +78,7 @@
         "no-unneeded-ternary": "warn",
         "prefer-arrow-callback": "warn",
         "yoda": "warn",
-        "no-else-return": "warn"
+        "no-else-return": "warn",
+        "space-before-function-paren": "warn"
     }
 }
