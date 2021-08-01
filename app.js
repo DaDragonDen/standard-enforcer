@@ -99,7 +99,7 @@ bot.on("ready", async () => {
     try {
 
       const file = require("./commands/" + files[x]);
-      if (typeof(file) === "function") await file(bot);
+      if (typeof(file) === "function") await file(bot, collections);
 
     } catch (err) {
 
