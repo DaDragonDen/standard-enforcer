@@ -16,11 +16,11 @@ module.exports = () => {
     // Delete the messages
     const amount = interaction ? interaction.data.options.find(option => option.name === "amount").value : args;
     const channel = interaction ? bot.getChannel(interaction.channel_id) : msg.channel;
-    console.log(await channel.purge({
+    await channel.purge({
       limit: amount + 1,
       filter: filteredMessage => initInteractionResponse.id !== filteredMessage.id,
       reason: "FOLLOWING " + member.username + "'S ORDERS."
-    }));
+    });
 
     // Success!
     return interaction ? {content: "IT IS DONE."} : await msg.channel.createMessage("IT IS DONE.");
