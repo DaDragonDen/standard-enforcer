@@ -2,6 +2,9 @@ const Slurs = /nigga|nigger|fag|faggot/gmi;
 
 module.exports = async (bot, msg, previousMsg) => {
 
+  // Check if this is the server
+  if (msg.channel.type !== 0) return;
+
   // Check exemptions
   // eslint-disable-next-line arrow-body-style
   if (msg.member.roles.find((r) => {
