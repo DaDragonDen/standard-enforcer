@@ -64,14 +64,30 @@ bot.on("error", (err) => {
   
 });
 
+let database, dbClient, db, collections;
+async function loadDB() {
+
+  console.log("\x1b[36m%s\x1b[0m", "[Client] Updating database variables...");
+
+  database = await require("./database");
+  dbClient = database.mongoClient;
+  db = dbClient.db("guilds");
+  collections = {
+    infractions: db.collection("Infractions")
+  };
+
+  console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
+  
+}
+
 let startedLoading;
 bot.on("ready", async () => {
   
   if (startedLoading) return;
   startedLoading = true;
 
-  const Database = await require("./database");
-  const dbClient = Database.mongoClient;
+  // Load database
+  await loadDB();
 
   // Process commands
   const commands = require("./commands");
