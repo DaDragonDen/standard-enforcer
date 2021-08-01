@@ -69,7 +69,7 @@ class Command {
 
     const interactionCmdInfo = configuredCommands.find(c => c.name === this.name);
     let matches = true;
-    if (this.slashOptions) {
+    if (this.slashOptions && interactionCmdInfo) {
 
       for (let i = 0; i < this.slashOptions.length; i++) {
 
