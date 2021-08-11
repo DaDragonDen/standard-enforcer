@@ -27,7 +27,7 @@
         "operator-linebreak": ["warn", "after"],
         "padded-blocks": ["warn", "always"], 
         "space-infix-ops": "warn", 
-        "arrow-body-style": "warn",
+        "arrow-body-style": "off",
         "no-empty": "warn", 
         "key-spacing": "warn",
         "max-len": "off", 
@@ -80,6 +80,7 @@
         "yoda": "warn",
         "no-else-return": "warn",
         "space-before-function-paren": "warn",
-        "prefer-destructuring": "warn"
+        "prefer-destructuring": "warn",
+        "no-mixed-operators": "warn"
     }
 }
