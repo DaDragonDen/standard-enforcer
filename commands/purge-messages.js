@@ -2,7 +2,7 @@ const Command = require("../commands");
 
 module.exports = () => {
   
-  new Command.new("purge", ["prune"], "dev", "Purge a bunch of messages so you don't have to click like a gazillion different times", undefined, async (bot, args, msg, interaction, initInteractionResponse) => {
+  new Command.new("purge", "Purge a bunch of messages so you don't have to click like a gazillion different times", async (bot, interaction, initInteractionResponse) => {
 
     // Make sure the member has permission to do this
     const guild = interaction ? bot.guilds.find(possibleGuild => possibleGuild.id === interaction.guild_id) : msg.channel.guild;
@@ -25,7 +25,7 @@ module.exports = () => {
     // Success!
     return interaction ? {content: "IT IS DONE."} : await msg.channel.createMessage("IT IS DONE.");
 
-  }, undefined, [{
+  }, 0, [{
     name: "amount",
     description: "The amount of messages you want to remove",
     type: 4,

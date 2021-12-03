@@ -2,7 +2,7 @@ const Command = require("../commands");
 
 module.exports = (_, collections) => {
   
-  new Command.new("warn", ["prune"], "dev", "Warn a user for violating the rules", undefined, async (bot, args, msg, interaction) => {
+  new Command.new("warn", "Warn a user for violating the rules", async (bot, interaction) => {
 
     // Make sure the member has permission to do this
     const guild = interaction ? bot.guilds.find(possibleGuild => possibleGuild.id === interaction.guild_id) : msg.channel.guild;
@@ -66,7 +66,7 @@ module.exports = (_, collections) => {
 
     }
 
-  }, undefined, [{
+  }, 0, [{
     name: "member",
     description: "The member you want to warn",
     type: 6,

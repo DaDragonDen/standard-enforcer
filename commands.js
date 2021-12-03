@@ -1,23 +1,24 @@
-const DefaultPrefix = ":";
 const commands = {};
 let bot;
 const cooledUsers = {};
 
 require("dotenv").config();
-const fetch = require("node-fetch");
 
 let configuredCommands = [];
 class Command {
 
-  async execute(args, msg, interaction, initInteractionResponse) {
+  async execute(interaction) {
+
+    // Acknowledge the interaction
+    await interaction.acknowledge();
 
     // Check if the user is under cooldown
-    const AuthorId = interaction ? interaction.member.id : msg.author.id;
+    const AuthorId = (interaction.member || interaction.user).id;
     const ExecuteTime = new Date().getTime();
     const RemainingCooldown = cooledUsers[AuthorId] ? (cooledUsers[AuthorId][this.name] + this.cooldown) - ExecuteTime : 0;
     if (cooledUsers[AuthorId] && RemainingCooldown > 0) {
 
-      await bot.createMessage(interaction ? interaction.channel_id : msg.channel.id, "<@" + AuthorId + "> You're moving too fast...even for me! Give me " + RemainingCooldown / 1000 + " more seconds.");
+      await bot.createMessage(interaction.channel_id, "<@" + AuthorId + "> You're moving too fast...even for me! Give me " + RemainingCooldown / 1000 + " more seconds.");
       return;
 
     }
@@ -28,18 +29,13 @@ class Command {
     // Execute the command
     try {
 
-      return await this.action(bot, args, msg, interaction, initInteractionResponse);
+      return await this.action(bot, interaction);
 
     } catch (err) {
 
       console.log(err);
 
-      return interaction ? {content: "Uh oh. Something real bad happened. Let's try that again."} : await msg.channel.createMessage({
-        content: "Something bad happened!",
-        embed: {
-          description: err
-        }
-      });
+      return bot.createInteractionResponse(interaction.id, interaction.token, {content: "Uh oh. Something real bad happened. Let's try that again."});
 
     }
 
@@ -68,83 +64,28 @@ class Command {
   async verifyInteraction() { 
 
     const interactionCmdInfo = configuredCommands.find(c => c.name === this.name);
-    let matches = true;
-    if (this.slashOptions && interactionCmdInfo) {
-
-      for (let i = 0; i < this.slashOptions.length; i++) {
-
-        // Make sure there aren't any new or deleted options
-        const options = Object.keys(this.slashOptions[i]);
-        if (this.slashOptions.length !== interactionCmdInfo.options.length) {
-          
-          matches = false;
-          break;
-
-        }
-
-        // Make sure all of the options are the same
-        for (let x = 0; x < options.length; x++) {
-
-          const oldData = interactionCmdInfo.options.find(possibleOption => possibleOption[options[x]] === this.slashOptions[i][options[x]]);
-          const newData = this.slashOptions[i][options[x]];
-          if (!oldData || oldData[options[x]] !== newData) {
-
-            matches = false;
-            break;
-
-          }
-
-        }
-
-      }
-
-    }
-    if (this.slashOptions && (!interactionCmdInfo || !matches)) {
+    if (this.slashOptions && !interactionCmdInfo) {
 
       try {
 
-        console.log("\x1b[36m%s\x1b[0m", "[Commands] " + (matches ? "Creating" : "Updating") + " interaction for command \"" + this.name + "\"...");
+        console.log("\x1b[36m%s\x1b[0m", "[Commands] " + (this.slashOptions ? "Creating" : "Deleting") + " interaction for command \"" + this.name + "\"...");
 
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
+        await bot.createCommand({
+          name: this.name,
+          description: this.description,
+          options: this.slashOptions
+        });
 
-          const res = await fetch("https://discord.com/api/v8/applications/" + process.env.applicationId + "/guilds/497607965080027136/commands" + (this.slashOptions ? "" : "/"), {
-            method: "POST",
-            body: JSON.stringify({
-              name: this.name,
-              description: this.description,
-              options: this.slashOptions
-            }),
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bot " + process.env.token
-            }
-          });
-
-          const jsonRes = await res.json();
-          if (jsonRes.retry_after) {
-
-            const waitTime = jsonRes.retry_after * 1000;
-            console.log("\x1b[33m%s\x1b[0m", "[Commands] Rate-limited! Waiting " + (waitTime / 1000) + " seconds before trying again");
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-
-          } else {
-
-            break;
-
-          }
-
-        }
-
-        console.log("\x1b[32m%s\x1b[0m", "[Commands] Successfully " + (this.slashOptions ? "created" : "deleted") + " interaction for command \"" + this.name + "\"!");
+        console.log("\x1b[32m%s\x1b[0m", "[Commands] Successfully created interaction for command \"" + this.name + "\"!");
 
       } catch (err) {
 
-        console.log("\x1b[33m%s\x1b[0m", "[Commands] Removing interaction for command \"" + this.name + "\"...");
+        console.log(err);
+        console.log("\x1b[33m%s\x1b[0m", "[Commands] Couldn't add interaction for command \"" + this.name + "\"...");
 
       }
 
-    } else if (!this.slashOptions && interactionCmdInfo && !matches) {
+    } else if (!this.slashOptions && interactionCmdInfo) {
       
       console.log("\x1b[36m%s\x1b[0m", "[Commands] Removing interaction for command \"" + this.name + "\"...");
       this.deleteInteraction = true;
@@ -154,7 +95,7 @@ class Command {
 
   }
   
-  constructor(name, aliases, category, description, examples, action, cooldown, slashOptions) {
+  constructor(name, description, action, cooldown, slashOptions) {
 
     console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
 
@@ -167,11 +108,8 @@ class Command {
     
     // Create the command
     this.name = name;
-    this.category = category;
-    this.aliases = aliases || [];
     this.action = action;
     this.description = description;
-    this.examples = examples;
     this.cooldown = cooldown === false ? 0 : cooldown || 0;
     this.slashOptions = slashOptions;
     commands[name] = this;
@@ -230,13 +168,7 @@ async function initialize(client) {
   // Get the already configured commands
   try {
     
-    const configuredCommandResponse = await fetch("https://discord.com/api/v8/applications/" + process.env.applicationId + "/guilds/497607965080027136/commands", {
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bot " + process.env.token
-      }
-    });
-    configuredCommands = await configuredCommandResponse.json();
+    configuredCommands = await client.getCommands();
 
   } catch (err) {
 
@@ -245,88 +177,31 @@ async function initialize(client) {
   }
 
   // Listen to interactions
-  client.on("rawWS", async (packet) => {
+  client.on("interactionCreate", async (interaction) => {
+    
+    let interactionName, command, response;
 
-    try {
+    // Make sure it's a command
+    if (interaction.type !== 2) return;
 
-      if (packet.t === "INTERACTION_CREATE") {
+    // Check if the command exists
+    interactionName = interaction.data.name;
+    command = commands[interactionName];
+    
+    if (command) {
 
-        const command = commands[packet.d.data.name] || {
-          name: packet.d.data.name,
-          deleteInteraction: true
-        };
-        if (command) {
+      await command.execute(interaction);
 
-          // Send initial response
-          let response = command.deleteInteraction && {content: "Fwoosh! And just like that, no more slash commands."};
-          await fetch("https://discord.com/api/v8/interactions/" + packet.d.id + "/" + packet.d.token + "/callback", {
-            method: "POST",
-            body: JSON.stringify({
-              type: 5
-            }),
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bot " + process.env.token
-            }
-          });
+    } else {
 
-          if (!command.deleteInteraction) {
-            
-            try {
-
-              const initInteractionResponse = await fetch("https://discord.com/api/v8/webhooks/" + process.env.applicationId + "/" + packet.d.token + "/messages/@original", {
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": "Bot " + process.env.token
-                }
-              });
-              response = await command.execute(undefined, undefined, packet.d, await initInteractionResponse.json()) || {content: "That's done."};
-
-            } catch (err) {
-
-              console.warn("[Commands] Couldn't execute slash command \"" + command.name + "\": " + err);
-
-            }
-          
-          }
-
-          await fetch("https://discord.com/api/v8/" + (command.deleteInteraction ? "applications/" + packet.d.application_id + "/guilds/497607965080027136/commands/" + packet.d.data.id : 
-            "webhooks/" + process.env.applicationId + "/" + packet.d.token + "/messages/@original"
-          ), {
-            method: command.deleteInteraction ? "DELETE" : "PATCH",
-            body: commands.deleteInteraction ? undefined : JSON.stringify(response),
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bot " + process.env.token
-            }
-          });
-
-          if (command.deleteInteraction) {
-
-            console.log("[Commands] Successfully deleted interaction for the \"" + command.name + "\" command");
-
-          }
-
-        }
-
-      }
-
-    } catch (err) {
-      
-      console.warn("[Commands] Couldn't handle rawWS: " + err);
+      await bot.deleteCommand(interaction.data.id);
 
     }
+
 
   });
 
   bot = client;
-
-}
-
-function getPrefix() {
-
-  return DefaultPrefix;
 
 }
 
@@ -335,4 +210,3 @@ exports.initialize = initialize;
 exports.get = getCommand;
 exports.list = listCommands();
 exports.new = Command;
-exports.getPrefix = getPrefix;
