@@ -52,11 +52,18 @@ module.exports = async (bot, msg, guildConfig, deleted, oldMessage) => {
 
         }
 
+      } else {
+
+        fields.push({
+          name: "No content available",
+          value: "This message was likely just an attachment"
+        })
+
       }
       
       // Send the log
       await LogChannel.createMessage({
-        content: deleted ? "A message sent by **" + (msg.author ? msg.author.username : "an unknown sender") + "** was deleted." : "**" + msg.author.username + "** edited their message.",
+        content: deleted ? `A message sent by ${msg.author ? `<@${msg.author.id}>` : "an unknown sender"} was deleted.` : `<@${msg.author.id}> edited their message.`,
         embed: {
           author: author, 
           color: deleted ? 16715278 : 14994184,
@@ -64,6 +71,9 @@ module.exports = async (bot, msg, guildConfig, deleted, oldMessage) => {
           footer: {
             text: msg.id
           }
+        },
+        allowedMentions: {
+          users: false
         }
       });
 

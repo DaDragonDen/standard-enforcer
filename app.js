@@ -44,6 +44,12 @@ bot.on("guildMemberRemove", async (guild, member) => {
 
 bot.on("error", (err) => console.log("\x1b[33m%s\x1b[0m", "[Eris] " + err));
 
+bot.on("threadCreate", async (thread) => {
+
+  await thread.join();
+
+})
+
 async function updateInviteVerification(verifyCodes, msg, emoji, reactor, deleted) {
 
   // Debounce
@@ -179,9 +185,14 @@ bot.on("ready", async () => {
     
     if (msg.author.bot) return;
     
+    // Check if it's spam
+    await require("./modules/spam-prevention")(bot, msg, latestMessages[msg.author.id]);
+    
     // Check if it's an invite
     await require("./modules/invite-protection")(bot, msg);
-    await require("./modules/spam-prevention")(bot, msg, latestMessages[msg.author.id]);
+
+    // Check if it's a media.discordapp.net link
+    await require("./modules/media-to-cdn")(bot, msg);
     
     // Log the message for later
     latestMessages[msg.author.id] = msg;
