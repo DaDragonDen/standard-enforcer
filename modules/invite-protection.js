@@ -1,21 +1,15 @@
-let Database, dbClient, db, collection;
+import getMongoClient from "../database.js";
 
-module.exports = async (bot, msg) => {
+export default async (bot, msg) => {
 
-  if (!Database) {
-
-    Database = await require("../database");
-    dbClient = Database.mongoClient;
-    db = dbClient.db("guilds");
-    collection = db.collection("GuildInviteWhitelist");
-
-  }
+  const dbClient = await getMongoClient();
+  const db = dbClient.db("guilds");
+  const collection = db.collection("GuildInviteWhitelist");
 
   // Check if this is the server
   if (msg.channel.type !== 0) return;
   
   const matches = msg.content.match(/discord.gg\/(\S+)/mi);
-  // eslint-disable-next-line arrow-body-style
   if (msg.channel.id !== "868879799601496084" && !msg.member.roles.find((r) => {
 
     return {

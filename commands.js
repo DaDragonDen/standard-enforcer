@@ -1,25 +1,49 @@
 const commands = {};
 let bot;
 const cooledUsers = {};
-
-require("dotenv").config();
-
 let configuredCommands = [];
-let followups = {};
+const followups = {};
+
 class Command {
+
+  constructor({name, description, action, cooldown, slashOptions, ephemeral}) {
+
+    console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
+
+    // Check if the command already exists
+    if (commands[name]) {
+
+      throw new Error("Command " + name + " already exists");
+
+    }
+    
+    // Create the command
+    this.name = name;
+    this.action = action;
+    this.description = description;
+    this.cooldown = cooldown === false ? 0 : cooldown || 0;
+    this.slashOptions = slashOptions;
+    this.ephemeral = ephemeral;
+    commands[name] = this;
+    
+    console.log("\x1b[32m%s\x1b[0m", "[Commands] Finished adding " + name + " command");
+
+    return commands[name];
+
+  }
   
   async execute(interaction, componentResponse) {
 
     // Acknowledge the interaction
     await interaction.defer(this.ephemeral ? 64 : undefined);
-    
+
     // Check if the user is under cooldown
     const AuthorId = (interaction.member || interaction.user).id;
     const ExecuteTime = new Date().getTime();
     const RemainingCooldown = cooledUsers[AuthorId] ? (cooledUsers[AuthorId][this.name] + this.cooldown) - ExecuteTime : 0;
     if (cooledUsers[AuthorId] && RemainingCooldown > 0) {
 
-      return await interaction.createFollowup("<@" + AuthorId + "> You're moving too fast...even for me! Give me " + RemainingCooldown / 1000 + " more seconds.");
+      return await interaction.createFollowup("YOU'RE GOING TOO FAST. WAIT " + RemainingCooldown / 1000 + " MORE SECONDS.");
 
     }
 
@@ -27,18 +51,20 @@ class Command {
     this.applyCooldown(AuthorId);
 
     // Execute the command
-    let waitForComponent = (followupId) => {
+    const waitForComponent = (followupId) => {
+      
       followups[followupId] = this.name;
-    }
+
+    };
     try {
 
-      return await this.action(bot, interaction, waitForComponent, componentResponse);
+      await this.action(interaction, waitForComponent, componentResponse);
 
-    } catch (err) {
+    } catch ({stack: description}) {
 
-      console.log(err);
-
-      return await interaction.createFollowup(interaction.id, interaction.token, {content: "Uh oh. Something real bad happened. Let's try that again."});
+      await interaction.createFollowup({embeds: [{
+        description
+      }]});
 
     }
 
@@ -65,10 +91,6 @@ class Command {
   }
 
   async verifyInteraction() { 
-
-    function optionsSame() {
-      return true;
-    }
 
     const interactionCmdInfo = configuredCommands.find(c => c.name === this.name);
     if (this.slashOptions && !interactionCmdInfo) {
@@ -98,43 +120,7 @@ class Command {
       this.deleteInteraction = true;
       console.log("\x1b[32m%s\x1b[0m", "[Commands] Removed interaction for command \"" + this.name + "\"...");
 
-    } else if (!optionsSame(this.slashOptions, interactionCmdInfo.options)) {
-      
-      console.log("\x1b[36m%s\x1b[0m", "[Commands] Updating interaction for command \"" + this.name + "\"...");
-      await bot.editCommand(interactionCmdInfo.id, {
-        name: this.name,
-        description: this.description,
-        options: this.slashOptions
-      });
-      console.log("\x1b[32m%s\x1b[0m", "[Commands] Successfully updated interaction for command \"" + this.name + "\"!");
-      
     }
-
-  }
-  
-  constructor(name, description, action, cooldown, slashOptions, ephemeral) {
-
-    console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
-
-    // Check if the command already exists
-    if (commands[name]) {
-
-      throw new Error("Command " + name + " already exists");
-
-    }
-    
-    // Create the command
-    this.name = name;
-    this.action = action;
-    this.description = description;
-    this.cooldown = cooldown === false ? 0 : cooldown || 0;
-    this.slashOptions = slashOptions;
-    this.ephemeral = ephemeral || false;
-    commands[name] = this;
-    
-    console.log("\x1b[32m%s\x1b[0m", "[Commands] Finished adding " + name + " command");
-
-    return commands[name];
 
   }
 
@@ -228,15 +214,12 @@ async function initialize(client) {
       
     }
 
-
   });
 
   bot = client;
 
 }
 
-// Send the exports!
-exports.initialize = initialize;
-exports.get = getCommand;
-exports.list = listCommands();
-exports.new = Command;
+export {
+  initialize, getCommand, listCommands, Command
+};

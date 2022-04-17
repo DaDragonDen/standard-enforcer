@@ -1,4 +1,4 @@
-module.exports = async (bot, msg, guildConfig, deleted, oldMessage) => {
+export default async (bot, msg, guildConfig, deleted, oldMessage) => {
 
   try {
 
@@ -57,7 +57,7 @@ module.exports = async (bot, msg, guildConfig, deleted, oldMessage) => {
         fields.push({
           name: "No content available",
           value: "This message was likely just an attachment"
-        })
+        });
 
       }
       

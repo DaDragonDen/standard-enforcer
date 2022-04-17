@@ -18,7 +18,7 @@
         "semi": "warn", 
         "no-extra-semi": "warn", 
         "no-var": "warn",
-        "quotes": [2, "double"], 
+        "quotes": ["warn", "double"], 
         "vars-on-top": "warn", 
         "func-names": "warn",
         "prefer-const": "warn", 
@@ -81,6 +81,8 @@
         "no-else-return": "warn",
         "space-before-function-paren": "warn",
         "prefer-destructuring": "warn",
-        "no-mixed-operators": "warn"
+        "no-mixed-operators": "warn",
+        "import/extensions": "off",
+        "curly": "warn"
     }
 }

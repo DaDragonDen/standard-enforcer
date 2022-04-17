@@ -1,6 +1,6 @@
 const Slurs = /nigga|nigger|fag|faggot/gmi;
 
-module.exports = async (bot, msg, previousMsg) => {
+export default async (bot, msg, previousMsg) => {
 
   // Check if this is the server
   if (msg.channel.type !== 0) return;

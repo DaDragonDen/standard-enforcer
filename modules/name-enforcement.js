@@ -1,5 +1,6 @@
 const badNamePattern = /discord.gg\/(\S+)/gmi;
-module.exports = async (member) => {
+
+export default async (member) => {
 
   // Check if the name violates the rules
   if (member.username.match(badNamePattern) || (member.nick && member.nick.match(badNamePattern))) {
@@ -16,4 +17,4 @@ module.exports = async (member) => {
 
   }
 
-}
+};

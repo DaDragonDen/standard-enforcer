@@ -1,39 +1,25 @@
-module.exports = async (collections, bot, newMessage, oldMessage) => {
-  
-  let archiveConfig;
-  let pins;
-  let archiveChannel;
-  let archiveChannelId;
-  let archiveMessage;
-  let archiveThread;
-  let archiveThreadId;
-  let oldestPin;
-  let targetChannel;
-  let archivedThreads;
-  let guild;
-  let channels;
-  let i;
-  let x;
+export default async (collections, bot, newMessage) => {
 
   // Check if the message was pinned
   if (!newMessage.pinned) return;
 
   // Check if we're at the pin limit
-  pins = await newMessage.channel.getPins();
+  const pins = await newMessage.channel.getPins();
   if (pins.length < 50) return;
 
   // Check if we should archive stuff, and if there's a thread to send archived messages to
-  guild = newMessage.channel.guild;
-  targetChannel = newMessage.channel;
-  archiveConfig = await collections.archiveConfig.findOne({guild_id: guild.id});
-  archiveThreadId = archiveConfig && archiveConfig.thread_ids && archiveConfig.thread_ids[targetChannel.id];
-  archiveThread = archiveThreadId && await bot.getChannel(archiveThreadId);
+  const {channel: targetChannel, channel: {guild}} = newMessage.channel;
+  const archiveConfig = await collections.archiveConfig.findOne({guild_id: guild.id});
+  const archiveThreadId = archiveConfig && archiveConfig.thread_ids && archiveConfig.thread_ids[targetChannel.id];
+  let archiveThread = archiveThreadId && await bot.getChannel(archiveThreadId);
+  let archivedThreads;
+  let channels;
 
   if (!archiveThread && archiveThreadId) {
 
     // Search for the thread, then unarchive it if it exists
     channels = guild.channels.filter(channel => channel.type === 0);
-    for (i = 0; channels.length > i; i++) {
+    for (let i = 0; channels.length > i; i++) {
 
       try {
 
@@ -58,6 +44,11 @@ module.exports = async (collections, bot, newMessage, oldMessage) => {
 
   }
 
+  // Check if there isn't an available archive thread.
+  let archiveChannel;
+  let archiveChannelId;
+  let archiveMessage;
+  
   if (!archiveThread) {
 
     // Create a thread
@@ -82,7 +73,7 @@ module.exports = async (collections, bot, newMessage, oldMessage) => {
   }
 
   // Get the oldest pin and archive it
-  oldestPin = pins[pins.length - 1];
+  const oldestPin = pins[pins.length - 1];
   await archiveThread.createMessage({
     embeds: [{
       author: {
@@ -100,4 +91,4 @@ module.exports = async (collections, bot, newMessage, oldMessage) => {
 
   await oldestPin.unpin();
 
-}
+};

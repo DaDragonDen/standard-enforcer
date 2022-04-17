@@ -2,7 +2,8 @@
   "name": "standard-enforcer",
   "version": "1.0.0",
   "description": "A Discord bot created to help maintain safety and security in Da Dragon Den",
-  "main": "app.js",
+  "exports": "./app.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js"
@@ -22,7 +23,6 @@
     "eris": "^0.16.1",
     "express": "^4.17.1",
     "mongodb": "^3.7.3",
-    "node-cache": "^5.1.2",
     "node-fetch": "^2.6.6"
   },
   "devDependencies": {
