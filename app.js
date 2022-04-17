@@ -21,7 +21,7 @@ loadEnv();
     intents: ["allNonPrivileged", "guildMembers", "guildMessages", "guildPresences"]
   });
   
-  const ExperimentalMode = true;
+  const ExperimentalMode = false;
   const checking = {};
 
   // Set up the database.
@@ -231,19 +231,19 @@ loadEnv();
       }
 
     }
+
+    // Upsert/delete slash commands where necessary.
+    const commandList = listCommands();
+    const commandListNames = Object.keys(commandList);
+    for (let i = 0; commandListNames.length > i; i++) {
+
+      await commandList[commandListNames[i]].verifyInteraction();
+
+    }
     
     if (ExperimentalMode) bot.editStatus("idle", {name: "-- MAINTENANCE --"});
     
   });
-  
-  // Upsert/delete slash commands where necessary.
-  const commandList = listCommands();
-  const commandListNames = Object.keys(commandList);
-  for (let i = 0; commandList.length > i; i++) {
-
-    await commandList[commandListNames[i]].verifyInteraction();
-
-  }
 
   // Connect to Discord.
   console.log("\x1b[36m%s\x1b[0m", "[Client] Connecting to Discord...");

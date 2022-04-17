@@ -12,14 +12,9 @@ export default async ({bot, collections}) => {
         member, 
         data: {
           options: [subcommand]
-        }, 
-        data: {
-          options: [{
-            options: [{subcommandOptions}]
-          }]
         }
       } = interaction;
-      const channelId = subcommandOptions.find(option => option.name === "channel")?.value;
+      const channelId = subcommand.options.find(option => option.name === "channel")?.value;
       if (!member) return await interaction.createFollowup("You can only run this command in a guild.");
       if (!member.permissions.has("manageMessages")) return await interaction.createFollowup("No can do! You don't have permission to manage messages in this server.");
       
@@ -28,7 +23,7 @@ export default async ({bot, collections}) => {
 
         case "set": {
 
-          const threadId = subcommandOptions.find(option => option.name === "thread").value;
+          const threadId = subcommand.options.find(option => option.name === "thread").value;
 
           // Set the channel in the database
           await collections.archiveConfig.updateOne(
@@ -47,7 +42,7 @@ export default async ({bot, collections}) => {
 
         case "auto": {
 
-          const create = subcommandOptions.find(option => option.name === "create").value;
+          const create = subcommand.options.find(option => option.name === "create").value;
 
           // Set the channel in the database
           await collections.archiveConfig.updateOne(
@@ -69,16 +64,28 @@ export default async ({bot, collections}) => {
 
           // Get the messages from the channel.
           const channel = channelId ? bot.getChannel(channelId) : interaction.channel;
-          const messages = [];
+          const {id: interactionResponseId} = await interaction.getOriginalMessage();
+          const messageGroups = [];
+          let currentGroup = -1;
           let rawMessages;
-          let i;
 
-          rawMessages = await channel.getMessages({limit: 100});
+          rawMessages = await channel.getMessages({limit: 100, before: interactionResponseId});
           while (rawMessages[0]) {
 
-            for (i = 0; rawMessages.length > i; i++) {
+            for (let i = 0; rawMessages.length > i; i++) {
 
-              messages.push(rawMessages[i]);
+              // Check if the current group is half of a megabyte.
+              if (!messageGroups[currentGroup] || Buffer.byteLength(JSON.stringify([...messageGroups[currentGroup], rawMessages[i]], null, 2)) > 250000) {
+
+                // Increment the current group.
+                currentGroup++;
+
+                // Add the array.
+                messageGroups[currentGroup] = [];
+
+              }
+
+              messageGroups[currentGroup].unshift(rawMessages[i]);
               
             }
 
@@ -90,14 +97,51 @@ export default async ({bot, collections}) => {
           }
 
           // Stringify the messages so that we can turn it into a JSON file.
-          const messagesString = JSON.stringify(messages);
-          const file = Buffer.from(messagesString);
+          const groupLength = messageGroups.length;
+          let messageNumber = 0;
+          for (let i = groupLength - 1; i >= 0; i--) {
+
+            // Combine the message groups into an array of 16 0.5 MB message objects.
+            const messages = [];
+            for (let x = 0; x < 32; x++) {
+
+              const group = messageGroups[i];
+              if (!group) {
+
+                break;
+
+              }
+
+              messages.push(...group);
+              i--;
+
+            }
+
+            const messagesString = JSON.stringify(messages, null, 2);
+            const file = Buffer.from(messagesString);
+
+            if (messageNumber === 0) {
+
+              await interaction.createFollowup(`HERE ARE THE MESSAGES. 1/${Math.ceil(messageGroups.length / 32)}`, {
+                file,
+                name: `${channel.name}_${new Date().getTime()}_1.json`
+              });
+
+            } else {
+
+              await interaction.channel.createMessage(`${messageNumber + 1}/${Math.ceil(messageGroups.length / 32)}`, {
+                file,
+                name: `${channel.name}_${new Date().getTime()}_${messageNumber + 1}.json`
+              });
+
+            }
+
+            messageNumber++;
+
+          }
 
           // Now, post it to the server.
-          return await interaction.createFollowup("HERE ARE THE MESSAGES.", {
-            file,
-            name: `${channel.name}_${new Date().getTime()}_.json`
-          });
+          break;
 
         }
 
@@ -116,7 +160,7 @@ export default async ({bot, collections}) => {
         options: [
           {
             name: "channel",
-            description: "The channel that you want to archive. If you don't define this, I'll archive the current channel instead.",
+            description: "The channel that you want to archive. Defaults to the current channel.",
             type: 7
           }
         ]
