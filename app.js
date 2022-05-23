@@ -3,7 +3,7 @@ import { Client } from "eris";
 import fs from "fs";
 import path, { dirname } from "path";
 import { config as loadEnv } from "dotenv";
-import getMongoClient from "./database.js";
+import MongoDB from "mongodb";
 import {initialize as initializeCommands, listCommands} from "./commands.js";
 import convertMediaLinks from "./modules/media-to-cdn.js";
 import checkInviteLinks from "./modules/invite-protection.js";
@@ -25,9 +25,19 @@ loadEnv();
   const checking = {};
 
   // Set up the database.
-  console.log("\x1b[36m%s\x1b[0m", "[Client] Updating database variables...");
+  console.log("\x1b[36m%s\x1b[0m", "[Client] Connecting to MongoDB...");
+  const dbClient = new MongoDB.MongoClient(
+    process.env.mongoDomain, 
+    { useNewUrlParser: true, useUnifiedTopology: true }
+  );
+  
+  await dbClient.connect();
 
-  const dbClient = await getMongoClient();
+  console.log("\x1b[32m%s\x1b[0m", "[Client] Connected!");
+
+  // Save the variables for later.
+  console.log("\x1b[36m%s\x1b[0m", "[Client] Updating database variables...");
+  
   const db = dbClient.db("guilds");
   const collections = {
     infractions: db.collection("Infractions"),
@@ -95,10 +105,9 @@ loadEnv();
     await checkForSpam(bot, msg, latestMessages[msg.author.id]);
     
     // Check if it's an invite.
-    await checkInviteLinks(bot, msg);
+    await checkInviteLinks(bot, msg, collections.inviteWhitelist);
 
     // Check if it's a media.discordapp.net link.
-    // TODO: Move this to another bot.
     await convertMediaLinks(bot, msg);
     
     // Log the message for later
@@ -209,7 +218,7 @@ loadEnv();
 
   });
 
-  bot.on("ready", async () => {
+  bot.once("ready", async () => {
 
     console.log("\x1b[32m%s\x1b[0m", "[Client] Connected to Discord!");
 

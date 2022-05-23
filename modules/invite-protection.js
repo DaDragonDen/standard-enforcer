@@ -1,10 +1,4 @@
-import getMongoClient from "../database.js";
-
-export default async (bot, msg) => {
-
-  const dbClient = await getMongoClient();
-  const db = dbClient.db("guilds");
-  const collection = db.collection("GuildInviteWhitelist");
+export default async (bot, msg, collection) => {
 
   // Check if this is the server
   if (msg.channel.type !== 0) return;
