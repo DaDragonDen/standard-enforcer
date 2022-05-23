@@ -8,7 +8,7 @@ export default async (collections, bot, newMessage) => {
   if (pins.length < 50) return;
 
   // Check if we should archive stuff, and if there's a thread to send archived messages to
-  const {channel: targetChannel, channel: {guild}} = newMessage.channel;
+  const {channel: targetChannel, channel: {guild}} = newMessage;
   const archiveConfig = await collections.archiveConfig.findOne({guild_id: guild.id});
   const archiveThreadId = archiveConfig && archiveConfig.thread_ids && archiveConfig.thread_ids[targetChannel.id];
   let archiveThread = archiveThreadId && await bot.getChannel(archiveThreadId);
