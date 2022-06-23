@@ -5,7 +5,6 @@ import path, { dirname } from "path";
 import { config as loadEnv } from "dotenv";
 import MongoDB from "mongodb";
 import {initialize as initializeCommands, listCommands} from "./commands.js";
-import convertMediaLinks from "./modules/media-to-cdn.js";
 import checkInviteLinks from "./modules/invite-protection.js";
 import checkForSpam from "./modules/spam-prevention.js";
 import verifyName from "./modules/name-enforcement.js";
@@ -106,9 +105,6 @@ loadEnv();
     
     // Check if it's an invite.
     await checkInviteLinks(bot, msg, collections.inviteWhitelist);
-
-    // Check if it's a media.discordapp.net link.
-    await convertMediaLinks(bot, msg);
     
     // Log the message for later
     latestMessages[msg.author.id] = msg;
