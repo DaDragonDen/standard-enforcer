@@ -1,5 +1,3 @@
-const Slurs = /nigga|nigger|fag|faggot/gmi;
-
 export default async (bot, msg, previousMsg) => {
 
   // Check if this is the server
@@ -29,13 +27,6 @@ export default async (bot, msg, previousMsg) => {
     // Remove mention spam
     await msg.delete();
     await msg.channel.createMessage(removalMsg + "Please don't ping that many members in one message.");
-    clear = false;
-    
-  } else if (Slurs.test(msg.content)) {
-
-    // Remove slurs
-    await msg.delete();
-    await msg.channel.createMessage(removalMsg + "Don't say that again.");
     clear = false;
   
   } else if (previousMsg && previousMsg.content.toLowerCase() === msg.content.toLowerCase() && msg.createdAt - previousMsg.createdAt < 60000 && msg.channel.id !== "509403818031710208") {
