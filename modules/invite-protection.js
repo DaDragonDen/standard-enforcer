@@ -20,16 +20,23 @@ export default async (bot, msg, collection) => {
     
     if (!verificationStatus || verificationStatus.whitelisted !== 1) {
 
-      await msg.delete();
-      await msg.channel.createMessage({
-        content: "<@" + msg.author.id + "> Please ask the <@&497608104230387713> before posting an unverified invite link.",
-        allowedMentions: {
-          roles: false,
-          users: true
-        }
-      });
-      return false;
+      try {
 
+        await msg.delete();
+        await msg.channel.createMessage({
+          content: "<@" + msg.author.id + "> Please ask the <@&497608104230387713> before posting an unverified invite link.",
+          allowedMentions: {
+            roles: false,
+            users: true
+          }
+        });
+        return false;
+
+      } catch ({stack}) {
+
+        console.log(`[Invite Protetection] Something bad happened when trying to delete a message:\n${stack}`);
+
+      }
     }
 
   }
