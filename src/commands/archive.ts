@@ -1,40 +1,67 @@
+import { Message, TextChannel } from "oceanic.js";
 import { Command } from "../commands.js";
 
-export default async ({bot, collections}) => {
-  
+export default async () => {
+
   new Command({
     name: "archive",
     description: "Manage the archive settings",
-    action: async (interaction) => {
+    action: async ({ discordClient, collections, interaction }) => {
 
       // Check if the member can manage messages
-      const {
-        member, 
-        data: {
-          options: [subcommand]
-        }
-      } = interaction;
-      const channelId = subcommand.options.find(option => option.name === "channel")?.value;
-      if (!member) return await interaction.createFollowup("You can only run this command in a guild.");
-      if (!member.permissions.has("manageMessages")) return await interaction.createFollowup("No can do! You don't have permission to manage messages in this server.");
-      
+      const { member } = interaction;
+      if (!member) {
+
+        await interaction.createFollowup({
+          content: "You can only run this command in a guild."
+        });
+        return;
+
+      }
+
+      if (!member.permissions.has("MANAGE_MESSAGES")) {
+
+        await interaction.createFollowup({
+          content: "Denied. You don't have permission to manage messages in this server."
+        });
+        return;
+
+      }
+
       // Check what they want to do
-      switch (subcommand.name) {
+      const interactionData = interaction.data;
+      if (!("options" in interactionData)) {
+
+        return;
+
+      }
+      const subcommand = interactionData.options.getSubCommand()?.[0];
+      const channelId = interactionData.options.getChannel("channel");
+      switch (subcommand) {
 
         case "set": {
 
-          const threadId = subcommand.options.find(option => option.name === "thread").value;
+          const thread = interactionData.options.getChannel("target");
+          if (!thread) {
+
+            return;
+
+          }
 
           // Set the channel in the database
           await collections.archiveConfig.updateOne(
-            {guildId: interaction.guildID},
-            {$set: {
-              ["thread_ids." + channelId]: threadId
-            }}, 
-            {upsert: true}
+            { guildId: interaction.guildID },
+            {
+              $set: {
+                ["thread_ids." + channelId]: thread.id
+              }
+            },
+            { upsert: true }
           );
 
-          await interaction.createFollowup("Thread set!");
+          await interaction.createFollowup({
+            content: "Thread set!"
+          });
 
           break;
 
@@ -42,20 +69,31 @@ export default async ({bot, collections}) => {
 
         case "auto": {
 
-          const create = subcommand.options.find(option => option.name === "create").value;
+          const create = interactionData.options.getBoolean("create");
 
           // Set the channel in the database
           await collections.archiveConfig.updateOne(
-            {guild_id: interaction.guildID},
-            {$set: {
-              auto_create_thread: create,
-              channel_id: channelId
-            }}, 
-            {upsert: true}
+            { guild_id: interaction.guildID },
+            {
+              $set: {
+                auto_create_thread: Boolean(create),
+                channel_id: channelId
+              }
+            },
+            { upsert: true }
           );
 
-          await interaction.createFollowup(`I will ${(!create ? "**not** " : "")}create threads for you! ${create ? "♥" : ">:]"}`);
+          await interaction.createFollowup({
+            content: `I will ${(!create ? "**not** " : "")}create threads for you! ${create ? "♥" : ">:]"}`
+          });
 
+          break;
+
+        }
+
+        case "pins": {
+
+          // TODO: Replace pin command functionality
           break;
 
         }
@@ -63,18 +101,23 @@ export default async ({bot, collections}) => {
         case "now": {
 
           // Get the messages from the channel.
-          const channel = channelId ? bot.getChannel(channelId) : interaction.channel;
-          const {id: interactionResponseId} = await interaction.getOriginalMessage();
-          const messageGroups = [];
-          let currentGroup = -1;
-          let rawMessages;
+          const channel = channelId ? await discordClient.rest.channels.get(channelId.id) : interaction.channel;
+          if (!channel || channel.type !== 0) {
 
-          rawMessages = await channel.getMessages({limit: 100, before: interactionResponseId});
+            return;
+
+          }
+
+          const { id: interactionResponseId } = await interaction.getOriginal();
+          const messageGroups: Message<TextChannel>[][] = [];
+          let currentGroup = -1;
+          let rawMessages = await channel.getMessages({ limit: 100, before: interactionResponseId });
           while (rawMessages[0]) {
 
             for (let i = 0; rawMessages.length > i; i++) {
 
               // Check if the current group is half of a megabyte.
+              const message = rawMessages[i];
               if (!messageGroups[currentGroup] || Buffer.byteLength(JSON.stringify([...messageGroups[currentGroup], rawMessages[i]], null, 2)) > 250000) {
 
                 // Increment the current group.
@@ -85,8 +128,8 @@ export default async ({bot, collections}) => {
 
               }
 
-              messageGroups[currentGroup].unshift(rawMessages[i]);
-              
+              messageGroups[currentGroup].unshift(message);
+
             }
 
             rawMessages = await channel.getMessages({
@@ -122,16 +165,22 @@ export default async ({bot, collections}) => {
 
             if (messageNumber === 0) {
 
-              await interaction.createFollowup(`HERE ARE THE MESSAGES. 1/${Math.ceil(messageGroups.length / 32)}`, {
-                file,
-                name: `${channel.name}_${new Date().getTime()}_1.json`
+              await interaction.createFollowup({
+                content: `HERE ARE THE MESSAGES. 1/${Math.ceil(messageGroups.length / 32)}`,
+                files: [{
+                  contents: file,
+                  name: `${channel.name}_${new Date().getTime()}_1.json`
+                }]
               });
 
             } else {
 
-              await interaction.channel.createMessage(`${messageNumber + 1}/${Math.ceil(messageGroups.length / 32)}`, {
-                file,
-                name: `${channel.name}_${new Date().getTime()}_${messageNumber + 1}.json`
+              await channel.createMessage({
+                content: `${messageNumber + 1}/${Math.ceil(messageGroups.length / 32)}`,
+                files: [{
+                  contents: file,
+                  name: `${channel.name}_${new Date().getTime()}_${messageNumber + 1}.json`
+                }]
               });
 
             }
@@ -210,7 +259,7 @@ export default async ({bot, collections}) => {
                 required: true
               }
             ]
-          }, 
+          },
           {
             name: "auto",
             description: "Allow me to automatically create threads for archives",

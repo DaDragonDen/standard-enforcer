@@ -1,10 +1,13 @@
-export default async (bot, msg, guildConfig, deleted, oldMessage) => {
+import { WithId, Document } from "mongodb";
+import { Client, Message, AnyGuildTextChannel, JSONMessage } from "oceanic.js";
+
+export default async (bot: Client, msg: Message<AnyGuildTextChannel>, guildConfig: WithId<Document> | null, deleted: boolean, oldMessage?: JSONMessage | null) => {
 
   try {
 
     // Make sure we have a channel
-    const LogChannels = guildConfig ? guildConfig.log_channel_ids : [];
-    if (!LogChannels || LogChannels.length === 0) {
+    const logChannels = guildConfig ? guildConfig.log_channel_ids : [];
+    if (!logChannels || logChannels.length === 0) {
 
       console.log("Guild " + msg.channel.guild.id + " doesn't have a log channel.");
       return;
@@ -15,17 +18,17 @@ export default async (bot, msg, guildConfig, deleted, oldMessage) => {
     if (!deleted && (!oldMessage || oldMessage.content === msg.content)) return;
 
     // Send the message to the log channel
-    for (let i = 0; LogChannels.length > i; i++) {
-      
-      const LogChannel = bot.getChannel(LogChannels[i]);
-      
+    for (let i = 0; logChannels.length > i; i++) {
+
+      const logChannel = bot.getChannel(logChannels[i]);
+
       // Check if we have access to the channel
-      if (!LogChannel) {
+      if (!logChannel || logChannel.type !== 1) {
 
         continue;
 
       }
-      
+
       // Sort out the fields
       const author = msg.author ? {
         name: msg.author.username + "#" + msg.author.discriminator,
@@ -35,7 +38,7 @@ export default async (bot, msg, guildConfig, deleted, oldMessage) => {
         name: "Channel",
         value: "<#" + msg.channel.id + ">"
       }];
-      
+
       if (msg.content) {
 
         fields.push({
@@ -44,7 +47,7 @@ export default async (bot, msg, guildConfig, deleted, oldMessage) => {
         });
 
         if (oldMessage) {
-          
+
           fields.push({
             name: "Old content",
             value: oldMessage.content
@@ -60,18 +63,20 @@ export default async (bot, msg, guildConfig, deleted, oldMessage) => {
         });
 
       }
-      
+
       // Send the log
-      await LogChannel.createMessage({
+      await logChannel.createMessage({
         content: deleted ? `A message sent by ${msg.author ? `<@${msg.author.id}>` : "an unknown sender"} was deleted.` : `<@${msg.author.id}> edited their message.`,
-        embed: {
-          author: author, 
-          color: deleted ? 16715278 : 14994184,
-          fields: fields,
-          footer: {
-            text: msg.id
+        embeds: [
+          {
+            author: author,
+            color: deleted ? 16715278 : 14994184,
+            fields: fields,
+            footer: {
+              text: msg.id
+            }
           }
-        },
+        ],
         allowedMentions: {
           users: false
         }

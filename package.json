@@ -2,11 +2,10 @@
   "name": "standard-enforcer",
   "version": "1.0.0",
   "description": "A Discord bot created to help maintain safety and security in Da Dragon Den",
-  "exports": "./app.js",
+  "exports": "./dist/app.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js"
+    "start": "tsc && node ./dist/app.js"
   },
   "repository": {
     "type": "git",
@@ -19,15 +18,17 @@
   },
   "homepage": "https://github.com/Beastslash/standard-enforcer",
   "dependencies": {
-    "dotenv": "^8.6.0",
-    "eris": "^0.16.1",
-    "express": "^4.17.1",
-    "mongodb": "^3.7.3",
-    "node-fetch": "^2.6.6"
+    "dotenv": "^16.0.2",
+    "express": "^4.18.1",
+    "mongodb": "^4.10.0",
+    "node-fetch": "^3.2.10",
+    "oceanic.js": "^1.1.1-dev.5814df9"
   },
   "devDependencies": {
-    "eslint": "^7.32.0",
-    "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.25.3"
+    "@types/node": "^18.7.18",
+    "@typescript-eslint/eslint-plugin": "^5.38.0",
+    "@typescript-eslint/parser": "^5.38.0",
+    "eslint": "^8.23.1",
+    "typescript": "^4.8.3"
   }
 }
