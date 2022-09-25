@@ -22,6 +22,7 @@ export interface CommandProperties {
   cooldown?: number;
   ephemeral?: boolean;
   customIds?: string[];
+  dmPermission?: boolean;
 }
 
 export type CommandAction = (props: CommandActionProperties) => Promise<void>;
@@ -38,9 +39,10 @@ class Command {
   ephemeral: boolean;
   cooledUsers: { [userId: string]: number } = {};
   deleteInteractionOnFirstUsage?: boolean;
-  customIds?: string[];
+  customIds: string[];
+  dmPermission: boolean;
 
-  constructor({ name, description, action, cooldown = 0, slashOptions, ephemeral = false, customIds = [] }: CommandProperties) {
+  constructor({ name, description, action, cooldown = 0, slashOptions, ephemeral = false, customIds = [], dmPermission = false }: CommandProperties) {
 
     console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
 
@@ -68,6 +70,7 @@ class Command {
     this.slashOptions = slashOptions;
     this.ephemeral = ephemeral;
     this.customIds = customIds;
+    this.dmPermission = dmPermission;
     commands[name] = this;
 
     console.log("\x1b[32m%s\x1b[0m", "[Commands] Finished adding " + name + " command");
@@ -147,6 +150,7 @@ class Command {
           name: this.name,
           description: this.description,
           options: this.slashOptions,
+          dmPermission: this.dmPermission,
           type: 1
         });
 
@@ -154,7 +158,7 @@ class Command {
 
       } catch (err) {
 
-        console.log(err);
+        console.log("\x1b[33m%s\x1b[0m", err);
         console.log("\x1b[33m%s\x1b[0m", "[Commands] Couldn't add interaction for command \"" + this.name + "\"...");
 
       }

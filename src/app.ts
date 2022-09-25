@@ -1,16 +1,13 @@
+import "dotenv/config";
 import { fileURLToPath } from "url";
 import { Client } from "oceanic.js";
 import fs from "fs";
 import path, { dirname } from "path";
-import { config as loadEnv } from "dotenv";
 import { MongoClient } from "mongodb";
 import { storeClientAndCollections, listCommands } from "./commands.js";
 import verifyName from "./modules/name-enforcement.js";
 import logActivity from "./modules/logs.js";
 import checkPin from "./modules/archive-pins.js";
-
-// Load environment variables.
-loadEnv();
 
 (async () => {
 
@@ -24,7 +21,7 @@ loadEnv();
   const bot = new Client({
     auth: `Bot ${token}`,
     gateway: {
-      intents: ["GUILD_MEMBERS", "GUILD_MESSAGES", "GUILD_PRESENCES"]
+      intents: ["GUILDS", "GUILD_MEMBERS", "GUILD_MESSAGES", "GUILD_PRESENCES"]
     }
   });
 
@@ -78,7 +75,82 @@ loadEnv();
 
   bot.on("threadCreate", async (thread) => {
 
+    // Check if this is a forum thread.
+    if (thread.type === 11) {
+
+      // Check if the thread creator needs feedback.
+      const tags = thread.appliedTags;
+      const feedbackRequestedId = "1019654897936912474";
+      const feedbackGivenId = "1019676029381525504";
+      if (tags.find((tagId) => tagId === feedbackRequestedId) && !tags.find((tagId) => tagId === feedbackGivenId)) {
+
+        try {
+
+          // Lock the channel.
+          const currentOverwrite = thread.parent?.permissionOverwrites.find((overwrite) => overwrite.id === "634819722101260313");
+          let currentAllow = currentOverwrite?.allow ?? 0n;
+          if (currentAllow & 1n << 11n) {
+
+            currentAllow -= 1n << 11n;
+
+          }
+          await thread.parent?.editPermission("634819722101260313", {
+            allow: `${currentAllow}`,
+            deny: `${(currentOverwrite?.deny ?? 0n) | 1n << 11n}`,
+            reason: "Enforcing Rule #8",
+            type: 0
+          });
+
+        } catch (err: unknown) {
+
+        }
+
+      }
+
+    }
+
     await thread.join();
+
+  });
+
+  bot.on("threadUpdate", async (thread, oldThread) => {
+
+    if (thread?.type === 11 && oldThread?.type === 11) {
+
+      const feedbackRequestedId = "1019654897936912474";
+      const feedbackGivenId = "1019676029381525504";
+      const currentTags = thread.appliedTags;
+      const opWantsFeedbackNow = currentTags.find((tagId) => tagId === feedbackRequestedId);
+      if ((currentTags.find((tagId) => tagId === feedbackGivenId) && opWantsFeedbackNow) || (!opWantsFeedbackNow && oldThread.appliedTags.find((tagId) => tagId === feedbackRequestedId))) {
+
+        try {
+
+          // Unlock the channel.
+          const currentOverwrite = thread.parent?.permissionOverwrites.find((overwrite) => overwrite.id === "634819722101260313");
+          let currentDeny = currentOverwrite?.deny ?? 0n;
+          console.log(currentDeny);
+          if (currentDeny & 1n << 11n) {
+            
+            currentDeny -= 1n << 11n;
+
+          }
+          console.log(currentDeny);
+          await thread.parent?.editPermission("634819722101260313", {
+            allow: `${(currentOverwrite?.allow ?? 0n) | 1n << 11n}`,
+            deny: `${currentDeny}`,
+            reason: "Enforcing Rule #8",
+            type: 0
+          });
+
+        } catch (err: unknown) {
+
+          console.log(err);
+
+        }
+
+      }
+      
+    }
 
   });
 
