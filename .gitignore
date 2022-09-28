@@ -1,4 +1,6 @@
 .env
+replit.nix
+.replit
 node_modules/
 node_modules
 dist

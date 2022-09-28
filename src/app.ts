@@ -11,15 +11,15 @@ import checkPin from "./modules/archive-pins.js";
 
 (async () => {
 
-  const { token, mongoDomain } = process.env;
-  if (!token || !mongoDomain) {
+  const { DISCORD_TOKEN, MONGO_DOMAIN } = process.env;
+  if (!DISCORD_TOKEN || !MONGO_DOMAIN) {
 
     throw new Error();
 
   }
 
   const bot = new Client({
-    auth: `Bot ${token}`,
+    auth: `Bot ${DISCORD_TOKEN}`,
     gateway: {
       intents: ["GUILDS", "GUILD_MEMBERS", "GUILD_MESSAGES", "GUILD_PRESENCES"]
     }
@@ -28,7 +28,7 @@ import checkPin from "./modules/archive-pins.js";
   // Set up the database.
   console.log("\x1b[36m%s\x1b[0m", "[Client] Connecting to MongoDB...");
 
-  const dbClient = new MongoClient(mongoDomain);
+  const dbClient = new MongoClient(MONGO_DOMAIN);
   await dbClient.connect();
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Connected!");
