@@ -1,6 +1,6 @@
 {
   "name": "standard-enforcer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A Discord bot created to help maintain safety and security in Da Dragon Den",
   "exports": "./dist/app.js",
   "type": "module",
