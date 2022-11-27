@@ -39,7 +39,8 @@ import checkPin from "./modules/archive-pins.js";
     infractions: db.collection("Infractions"),
     inviteWhitelist: db.collection("GuildInviteWhitelist"),
     archiveConfig: db.collection("ArchiveConfig"),
-    guildLogInfo: db.collection("GuildLogInfo")
+    guildLogInfo: db.collection("GuildLogInfo"),
+    megathreads: db.collection("megathreads")
   };
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
