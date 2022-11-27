@@ -3,10 +3,9 @@ import { Command } from "../commands.js";
 export default async () => {
 
   const command = new Command({
-    name: "logs",
+    name: "logging",
     description: "Modify log settings",
     action: async ({ discordClient, interaction, collections }) => {
-
 
       const collection = collections.guildLogInfo;
       const { member, guildID: guildId } = interaction;
@@ -15,7 +14,12 @@ export default async () => {
       if (!member || !member.permissions.has("MANAGE_GUILD")) {
 
         await interaction.createFollowup({
-          content: "Denied."
+          content: "You don't have permissions to do that.",
+          embeds: [
+            {
+              description: "You're missing the Manage Guild permission."
+            }
+          ]
         });
         return;
 
@@ -29,26 +33,143 @@ export default async () => {
 
       }
 
-      const subcommand = interactionData.options.getSubCommand()?.[0];
+      const {options} = interactionData;
+      const subcommand = options.getSubCommand();
       if (!subcommand) {
 
         return;
 
       }
-
+      
+      const subcommandGroupName = subcommand[0];
       const { id: memberId } = member;
-      const guildConfig = await collection.findOne({ guildId }) || { loggingEnabled: 0, logChannelIds: "[]" };
-      switch (subcommand) {
+      const guildConfig = await collection.findOne({ guildId }) || { loggingEnabled: 0, loggedChannelIds: [], logStorageChannelId: "", logListIsWhiteList: false};
+      switch (subcommandGroupName) {
+        
+        case "list": {
 
-        case "toggle": {
+          // Get the real subcommand name.
+          const subcommandName = subcommand[1];
+          switch (subcommandName) {
+
+            case "add":
+            case "remove": {
+
+              // Get the channel
+              const channel = options.getChannel("channel");
+              if (!channel) return;
+
+              // Add or remove the channel.
+              const isAddingChannel = subcommandName === "add";
+              await collection.updateOne(
+                { guildId },
+                { 
+                  [isAddingChannel ? "$push" : "$pull"]: { 
+                    loggedChannelIds: channel.id
+                  } 
+                },
+                { upsert: true }
+              );
+
+              // Tell the user that everything's OK.
+              await interaction.createFollowup({
+                content: `${isAddingChannel && !guildConfig.logListIsWhiteList ? "Now logging" : "I'm no longer logging"} <#${channel.id}>.`,
+                embeds: !guildConfig.loggingEnabled && isAddingChannel ? [
+                  {
+                    description: "Logging is currently disabled. Run **/logging enable** to fix this."
+                  }
+                ] : undefined
+              });
+
+              break;
+
+            }
+
+            case "type":
+
+              // Get the booleans.
+              const isWhiteList = options.getBoolean("toggle") ?? true;
+              const shouldResetList = options.getBoolean("reset") ?? false;
+
+              // Update the settings.
+              await collection.updateOne(
+                { guildId },
+                { 
+                  $set: {
+                    logListIsWhitelist: isWhiteList,
+                    ...(shouldResetList && {
+                      loggedChannelIds: []
+                    })
+                  }
+                },
+                { upsert: true }
+              );
+
+              // Tell the user that everything's OK.
+              await interaction.createFollowup({
+                content: `I changed the list type to be a **${isWhiteList ? "WHITELIST" : "BLACKLIST"}**.${shouldResetList ? " I also reset the list, so there are no channels on it at the moment." : ""}`
+              });
+
+              break;
+            
+            default:
+              break;
+
+          }
+          break;
+
+        }
+
+        case "storage": {
+
+          // Get the subcommand name.
+          const subcommandName = subcommand[1];
+          let storageChannel;
+          if (subcommandName === "set") {
+
+            // Make sure the storage channel exists.
+            storageChannel = options.getChannel("channel");
+            if (!storageChannel) {
+
+              await interaction.createFollowup({
+                content: "I couldn't find that channel. Do I have permission to view it?"
+              });
+              return;
+
+            }
+
+          }
+
+          // Set the storage channel.
+          await collection.updateOne(
+            { guildId },
+            { 
+              $set: {
+                logStorageChannelId: storageChannel?.id
+              }
+            },
+            { upsert: true }
+          );
+          
+          // Tell the user everything's OK.
+          await interaction.createFollowup({
+            content: storageChannel ? `I'm now sending logs to <#${storageChannel.id}>.` : `I'm no longer sending logs to that channel.`
+          })
+
+          break;
+
+        }
+
+        case "disable":
+        case "enable": {
 
           // Check if logs are enabled
-          const LoggingEnabled = guildConfig.loggingEnabled;
-          const turnOn = interactionData.options.getBoolean("enable");
-          if ((LoggingEnabled && turnOn) || (!LoggingEnabled && !turnOn)) {
+          const loggingEnabled = guildConfig.loggingEnabled;
+          const turnOn = subcommandGroupName === "enable";
+          if ((loggingEnabled && turnOn) || (!loggingEnabled && !turnOn)) {
 
             await interaction.createFollowup({
-              content: `LOGGING IS ALREADY ${LoggingEnabled ? "ONLINE" : "OFFLINE"}.`
+              content: `Logging is already **${loggingEnabled ? "ONLINE" : "OFFLINE"}**.`
             });
             return;
 
@@ -67,98 +188,39 @@ export default async () => {
 
           // Success.
           await interaction.createFollowup({
-            content: `LOGGING SYSTEMS ${LoggingEnabled ? "OFFLINE" : "ONLINE"}.`
+            content: `Logging systems are now **${loggingEnabled ? "OFFLINE" : "ONLINE"}**.`
           });
-          break;
-
-        }
-
-        case "set": {
-
-          // // Verify that the channels exist
-          // const LogChannels = [];
-          // if (!LogChannelMatches[0]) {
-
-          //   await interaction.createFollowup({
-          //     content: "You didn't mention any channel or ID."
-          //   });
-          //   return;
-
-          // }
-
-          // for (let i = 0; LogChannelMatches.length > i; i++) {
-
-          //   const LogChannelId = LogChannelMatches[i][1].includes("#") ? LogChannelMatches[i][2] : LogChannelMatches[i][1];
-          //   const LogChannel = await discordClient.rest.channels.get(LogChannelId);
-
-          //   if (!LogChannel) {
-
-          //     await interaction.createFollowup({
-          //       content: LogChannelId + " isn't a valid channel ID, or I can't access that channel."
-          //     });
-          //     return;
-
-          //   }
-
-          //   // Add it to the list
-          //   LogChannels.push(LogChannelId);
-
-          // }
-
-          // const LogChannelsString = JSON.stringify(LogChannels);
-
-          // // Update the log channels
-          // await collection.updateOne(
-          //   {guildId}, 
-          //   {$set: {logChannelIds: LogChannelsString}},
-          //   {upsert: true}
-          // );
-
-          // // Set cooldown
-          // command.applyCooldown(memberId, 5000);
-
-          // // Tell the user
-          // for (let i = 0; LogChannels.length > i; i++) {
-
-          //   LogChannels[i] = (LogChannels.length > 1 ? (i === 0 ? "" : ", " + (i + 1 === LogChannels.length ? "and " : "")) : "") + "<#" + LogChannels[i] + ">";
-
-          // }
-
-          // await interaction.createFollowup({
-          //   content: `I'll file this server's logs in ${LogChannels.join("")}!`
-          // });
           break;
 
         }
 
         case "status": {
 
-          const LogChannelsString = guildConfig.logChannelIds;
-          const LogChannels = JSON.parse(LogChannelsString);
-          const ValidChannels = [];
-          const InvalidChannels = [];
+          const storageChannelId = guildConfig.logStorageChannelId;
+          const logChannelIds = guildConfig.loggedChannelIds ?? [];
+          const validChannels = [];
+          const invalidChannels = [];
 
           // Verify Toasty's access
-          for (let i = 0; LogChannels.length > i; i++) {
+          for (let i = 0; logChannelIds.length > i; i++) {
 
-            if (await discordClient.rest.channels.get(LogChannels[i])) {
+            if (await discordClient.rest.channels.get(logChannelIds[i])) {
 
-              ValidChannels.push("<#" + LogChannels[i] + ">");
+              validChannels.push(`<#${logChannelIds[i]}>`);
 
             } else {
 
-              InvalidChannels.push(LogChannels[i]);
+              invalidChannels.push(logChannelIds[i]);
 
             }
 
           }
 
-          ValidChannels[ValidChannels.length - 1] = (ValidChannels.length > 1 ? "and " : "") + ValidChannels[ValidChannels.length - 1];
+          validChannels[validChannels.length - 1] = (validChannels.length > 1 ? "and " : "") + validChannels[validChannels.length - 1];
 
           await interaction.createFollowup({
-            content: `LOGGING IS ${guildConfig.loggingEnabled ? `**ENABLED**, ${ValidChannels[0] ? `AND BEING BROADCASTED TO ${ValidChannels.join(", ")}.` : "HOWEVER, THE LOG BROADCAST CHANNEL DOESN'T EXIST."}` : "**DISABLED**."}`
+            content: `Logging is ${guildConfig.loggingEnabled ? `**ENABLED**${storageChannelId ? `. Logs are being stored in <#${storageChannelId}>.${validChannels[0] ? ` The following channels are ${!guildConfig.logListIsWhiteList ? "**NOT**" : ""} logged: ${validChannels.join(", ")}.` : ""}` : "; however, the storage channel doesn't exist."}` : "**DISABLED**."}`
           });
-          return;
 
         }
 
@@ -171,21 +233,95 @@ export default async () => {
     cooldown: 0,
     slashOptions: [
       {
-        name: "toggle",
-        type: 1,
-        description: "Toggle logging in this server.",
+        name: "list",
+        type: 2,
+        description: "Manage tracked or ignored channels",
         options: [
           {
-            name: "enable",
-            type: 5,
-            description: "Do you want me to log activity in this server?",
-            required: true
+            name: "add",
+            type: 1,
+            description: "Add a channel that you want me to track messages from.",
+            options: [
+              {
+                name: "channel",
+                type: 7,
+                description: "Which channel do you want me to track?",
+                required: true
+              }
+            ]
+          },
+          {
+            name: "remove",
+            type: 1,
+            description: "Remove a channel from the list.",
+            options: [
+              {
+                name: "channel",
+                type: 7,
+                description: "Which channel do you want me to track?",
+                required: true
+              }
+            ]
+          },
+          {
+            name: "type",
+            type: 1,
+            description: "Set the channel list to be a whitelist or a blacklist.",
+            options: [
+              {
+                name: "toggle",
+                description: "Do you want me to track all channels by default?",
+                type: 5,
+                required: true
+              },
+              {
+                name: "reset",
+                description: "Would you like me to reset the list?",
+                type: 5
+              }
+            ]
           }
         ]
-      }, {
+      },
+      {
+        name: "storage",
+        type: 2,
+        description: "Manage log broadcast channels",
+        options: [
+          {
+            name: "set",
+            type: 1,
+            description: "Set the channel where you want me to put logs.",
+            options: [
+              {
+                name: "channel",
+                description: "Which channel do you want me to store logs in?",
+                type: 7,
+                required: true
+              }
+            ]
+          },
+          {
+            name: "unset",
+            type: 1,
+            description: "Unset the log channel if there is one."
+          }
+        ]
+      },
+      {
+        name: "enable",
+        type: 1,
+        description: "Enable logging in this server."
+      },
+      {
+        name: "disable",
+        type: 1,
+        description: "Disable logging in this server."
+      },
+      {
         name: "status",
         type: 1,
-        description: "Am I logging activity in this server? Find out here."
+        description: "Find out if I logging activity in this server."
       }
     ]
   });

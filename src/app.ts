@@ -21,7 +21,7 @@ import checkPin from "./modules/archive-pins.js";
   const bot = new Client({
     auth: `Bot ${DISCORD_TOKEN}`,
     gateway: {
-      intents: ["GUILDS", "GUILD_MEMBERS", "GUILD_MESSAGES", "GUILD_PRESENCES"]
+      intents: ["GUILDS", "GUILD_MEMBERS", "GUILD_MESSAGES", "GUILD_PRESENCES", "MESSAGE_CONTENT"]
     }
   });
 
@@ -38,7 +38,6 @@ import checkPin from "./modules/archive-pins.js";
   const collections = {
     infractions: db.collection("Infractions"),
     inviteWhitelist: db.collection("GuildInviteWhitelist"),
-    logConfig: db.collection("LogConfig"),
     archiveConfig: db.collection("ArchiveConfig"),
     guildLogInfo: db.collection("GuildLogInfo")
   };
@@ -113,47 +112,6 @@ import checkPin from "./modules/archive-pins.js";
 
   });
 
-  bot.on("threadUpdate", async (thread, oldThread) => {
-
-    if (thread?.type === 11 && oldThread?.type === 11) {
-
-      const feedbackRequestedId = "1019654897936912474";
-      const feedbackGivenId = "1019676029381525504";
-      const currentTags = thread.appliedTags;
-      const opWantsFeedbackNow = currentTags.find((tagId) => tagId === feedbackRequestedId);
-      if ((currentTags.find((tagId) => tagId === feedbackGivenId) && opWantsFeedbackNow) || (!opWantsFeedbackNow && oldThread.appliedTags.find((tagId) => tagId === feedbackRequestedId))) {
-
-        try {
-
-          // Unlock the channel.
-          const currentOverwrite = thread.parent?.permissionOverwrites.find((overwrite) => overwrite.id === "634819722101260313");
-          let currentDeny = currentOverwrite?.deny ?? 0n;
-          console.log(currentDeny);
-          if (currentDeny & 1n << 11n) {
-            
-            currentDeny -= 1n << 11n;
-
-          }
-          console.log(currentDeny);
-          await thread.parent?.editPermission("634819722101260313", {
-            allow: `${(currentOverwrite?.allow ?? 0n) | 1n << 11n}`,
-            deny: `${currentDeny}`,
-            reason: "Enforcing Rule #8",
-            type: 0
-          });
-
-        } catch (err: unknown) {
-
-          console.log(err);
-
-        }
-
-      }
-      
-    }
-
-  });
-
   bot.on("guildMemberUpdate", async (member) => {
 
     await verifyName(member);
@@ -191,7 +149,7 @@ import checkPin from "./modules/archive-pins.js";
 
         await checkPin(collections.archiveConfig, bot, newMessage);
 
-        const guildConfig = newMessage.channel && newMessage.channel.type === 0 && await collections.logConfig.findOne({ guild_id: newMessage.channel.guild.id });
+        const guildConfig = newMessage.channel && newMessage.channel.type === 0 && await collections.guildLogInfo.findOne({ guildId: newMessage.channel.guild.id });
         if (guildConfig) await logActivity(bot, newMessage, guildConfig, false, oldMessage);
 
       }
@@ -217,7 +175,7 @@ import checkPin from "./modules/archive-pins.js";
 
       if (msg.inCachedGuildChannel()) {
 
-        const guildConfig = await collections.logConfig.findOne({ guild_id: msg.guild.id });
+        const guildConfig = await collections.guildLogInfo.findOne({ guildId: msg.guild.id });
         await logActivity(bot, msg, guildConfig, true);
 
       }
@@ -239,15 +197,20 @@ import checkPin from "./modules/archive-pins.js";
     await storeClientAndCollections(bot, collections);
 
     // Set up commands.
-    const files = fs.readdirSync(path.join(dirname(fileURLToPath(import.meta.url)), "commands"));
+    const fileNames = fs.readdirSync(path.join(dirname(fileURLToPath(import.meta.url)), "commands"));
 
-    for (let i = 0; files.length > i; i++) {
+    for (let i = 0; fileNames.length > i; i++) {
 
-      const { default: module } = await import("./commands/" + files[i]);
+      const path = `./commands/${fileNames[i]}`;
+      if (path.slice(path.length - 3) === ".js") {
 
-      if (typeof module === "function") {
+        const { default: module } = await import(path);
 
-        await module({ bot, collections });
+        if (typeof module === "function") {
+
+          await module({ bot, collections });
+
+        }
 
       }
 
@@ -261,6 +224,8 @@ import checkPin from "./modules/archive-pins.js";
       await commandList[commandListNames[i]].verifyInteraction();
 
     }
+
+    console.log("\x1b[32m%s\x1b[0m", "[Commands] Command actions initialized.");
 
   });
 
